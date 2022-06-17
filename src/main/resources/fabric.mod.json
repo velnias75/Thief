@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "thief",
+  "version": "${version}",
+
+  "name": "Thief",
+  "description": "Steal player skulls, banners or shields",
+  "authors": [
+    "Velnias75"
+  ],
+  "contact": {
+    "issues": "https://github.com/velnias75/Thief/issues",
+    "sources": "https://github.com/velnias75/Thief"
+  },
+
+  "license": "GPL-3.0-or-later",
+
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "de.rangun.thief.ThiefMod"
+    ]
+  },
+  "mixins": [
+  ],
+ 
+  "depends": {
+    "fabricloader": ">=0.13.0",
+    "fabric": "*",
+    "minecraft": ">=1.18.2"
+  }
+}

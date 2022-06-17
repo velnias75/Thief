@@ -1,0 +1,47 @@
+plugins {
+    id 'fabric-loom' version '0.12-SNAPSHOT'
+}
+
+group = projectGroup
+archivesBaseName = projectArchiveBaseName
+version = projectBaseVersion
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    
+}
+
+loom {
+	mixin.defaultRefmapName = "${project.group}.${project.archivesBaseName}"
+	
+	splitEnvironmentSourceSets()
+
+    mods {
+        modid {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+compileJava {
+    options.compilerArgs << '-Xlint:deprecation'
+}
+
+processResources {
+	inputs.property "version", project.version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": project.version
+	}
+}
+
