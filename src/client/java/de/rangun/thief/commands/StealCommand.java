@@ -108,27 +108,9 @@ public final class StealCommand implements Command<FabricClientCommandSource> {
 			if (entity instanceof ArmorStandEntity) {
 
 				final ArmorStandEntity as = (ArmorStandEntity) entity;
-				final List<String> heads = new ArrayList<>();
+				final List<String> heads = new ArrayList<>(getStealable(as.getArmorItems()));
 
-				for (final ItemStack item : as.getArmorItems()) {
-
-					if (item.getItem() instanceof SkullItem || item.getItem() instanceof BannerItem
-							|| item.getItem() instanceof ShieldItem) {
-						heads.add(GIVE_CMD_PREFIX + Registry.ITEM.getId(item.getItem())
-								+ item.getOrCreateNbt().asString());
-
-					}
-				}
-
-				for (final ItemStack item : as.getItemsHand()) {
-
-					if (item.getItem() instanceof SkullItem || item.getItem() instanceof BannerItem
-							|| item.getItem() instanceof ShieldItem) {
-						heads.add(GIVE_CMD_PREFIX + Registry.ITEM.getId(item.getItem())
-								+ item.getOrCreateNbt().asString());
-
-					}
-				}
+				heads.addAll(getStealable(as.getItemsHand()));
 
 				if (!heads.isEmpty()) {
 
@@ -145,9 +127,7 @@ public final class StealCommand implements Command<FabricClientCommandSource> {
 
 				final ItemFrameEntity ifr = (ItemFrameEntity) entity;
 
-				if (ifr.getHeldItemStack().getItem() instanceof SkullItem
-						|| ifr.getHeldItemStack().getItem() instanceof BannerItem
-						|| ifr.getHeldItemStack().getItem() instanceof ShieldItem) {
+				if (isStealable(ifr.getHeldItemStack().getItem())) {
 
 					copyGiveCmdToClipboard(ifr.getHeldItemStack().getItem(), ifr.getHeldItemStack().getOrCreateNbt(),
 							context);
@@ -165,6 +145,20 @@ public final class StealCommand implements Command<FabricClientCommandSource> {
 		return Command.SINGLE_SUCCESS;
 	}
 
+	private final List<String> getStealable(final Iterable<ItemStack> items) {
+
+		final List<String> heads = new ArrayList<>(6);
+
+		for (final ItemStack item : items) {
+
+			if (isStealable(item.getItem())) {
+				heads.add(GIVE_CMD_PREFIX + Registry.ITEM.getId(item.getItem()) + item.getOrCreateNbt().asString());
+			}
+		}
+
+		return heads;
+	}
+
 	private void copyGiveCmdToClipboard(final Item item, final NbtCompound nbt,
 			final CommandContext<FabricClientCommandSource> context) {
 
@@ -172,7 +166,6 @@ public final class StealCommand implements Command<FabricClientCommandSource> {
 
 		new Clipboard().setClipboard(MinecraftClient.getInstance().getWindow().getHandle(),
 				(GIVE_CMD_PREFIX + Registry.ITEM.getId(item) + nbt.asString()).trim());
-
 	}
 
 	private Text getFeedbackText(final Item item) {
@@ -183,5 +176,9 @@ public final class StealCommand implements Command<FabricClientCommandSource> {
 		return (new TranslatableText(key).formatted(Formatting.DARK_AQUA)).append(" copied as ")
 				.append(new LiteralText("/give command").formatted(Formatting.AQUA, Formatting.ITALIC))
 				.append(new LiteralText(" to clipboard.")).formatted(Formatting.DARK_AQUA);
+	}
+
+	private boolean isStealable(final Item item) {
+		return item instanceof SkullItem || item instanceof BannerItem || item instanceof ShieldItem;
 	}
 }
