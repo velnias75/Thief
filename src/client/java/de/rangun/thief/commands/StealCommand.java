@@ -42,6 +42,8 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ShieldItem;
 import net.minecraft.item.SkullItem;
+import net.minecraft.item.WritableBookItem;
+import net.minecraft.item.WrittenBookItem;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
@@ -179,6 +181,7 @@ public final class StealCommand implements Command<FabricClientCommandSource> {
 	}
 
 	private boolean isStealable(final Item item) {
-		return item instanceof SkullItem || item instanceof BannerItem || item instanceof ShieldItem;
+		return item instanceof SkullItem || item instanceof BannerItem || item instanceof ShieldItem
+				|| item instanceof WritableBookItem || item instanceof WrittenBookItem;
 	}
 }
