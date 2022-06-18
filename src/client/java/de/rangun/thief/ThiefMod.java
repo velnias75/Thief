@@ -22,15 +22,33 @@ package de.rangun.thief;
 import static net.fabricmc.fabric.api.client.command.v1.ClientCommandManager.DISPATCHER;
 import static net.fabricmc.fabric.api.client.command.v1.ClientCommandManager.literal;
 
+import java.io.IOException;
+
+import com.google.gson.JsonSyntaxException;
+
 import de.rangun.thief.commands.StealCommand;
+import de.rangun.thief.swag.Swag;
 import net.fabricmc.api.ClientModInitializer;
 
 public final class ThiefMod implements ClientModInitializer {
 
+	private Swag swag;
+
+	public ThiefMod() {
+
+		try {
+			this.swag = new Swag();
+		} catch (JsonSyntaxException | IOException e) {
+			this.swag = new Swag(true);
+		}
+	}
+
 	@Override
 	public void onInitializeClient() {
+		DISPATCHER.register(literal("steal").executes(new StealCommand(this)));
+	}
 
-		DISPATCHER.register(literal("steal").executes(new StealCommand()));
-
+	public Swag getSwag() {
+		return swag;
 	}
 }

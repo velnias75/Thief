@@ -19,13 +19,17 @@
 
 package de.rangun.thief.commands;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.gson.JsonObject;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
+import de.rangun.thief.ThiefMod;
+import de.rangun.thief.swag.Swag;
 import net.fabricmc.fabric.api.client.command.v1.FabricClientCommandSource;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -33,7 +37,6 @@ import net.minecraft.block.entity.BannerBlockEntity;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.SkullBlockEntity;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.util.Clipboard;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.entity.decoration.ItemFrameEntity;
@@ -58,13 +61,18 @@ import net.minecraft.util.registry.Registry;
 
 public final class StealCommand implements Command<FabricClientCommandSource> {
 
-	private final static String GIVE_CMD_PREFIX = "/give @p ";
+	private final ThiefMod mod;
+
+	public StealCommand(final ThiefMod thiefMod) {
+		this.mod = thiefMod;
+	}
 
 	@Override
 	public int run(final CommandContext<FabricClientCommandSource> context) throws CommandSyntaxException {
 
 		final MinecraftClient client = context.getSource().getClient();
 		final HitResult hit = client.crosshairTarget;
+		final Swag swag = mod.getSwag();
 
 		boolean found = false;
 
@@ -88,16 +96,21 @@ public final class StealCommand implements Command<FabricClientCommandSource> {
 
 					sbe.readNbt(nbt);
 
-					copyGiveCmdToClipboard(block.asItem(), nbt, context);
-					found = true;
+					try {
+						found = storeCopySend(block.asItem(), nbt, swag, context);
+					} catch (IOException e) {
+						// TODO log failure
+					}
 
 				} else if (be instanceof BannerBlockEntity) {
 
-					final BannerBlockEntity ban = (BannerBlockEntity) be;
-					final ItemStack item = ban.getPickStack();
+					try {
+						found = storeCopySend(block.asItem(), ((BannerBlockEntity) be).getPickStack().getOrCreateNbt(),
+								swag, context);
 
-					copyGiveCmdToClipboard(block.asItem(), item.getOrCreateNbt(), context);
-					found = true;
+					} catch (IOException e) {
+						// TODO log failure
+					}
 				}
 			}
 
@@ -109,31 +122,41 @@ public final class StealCommand implements Command<FabricClientCommandSource> {
 
 			if (entity instanceof ArmorStandEntity) {
 
-				final ArmorStandEntity as = (ArmorStandEntity) entity;
-				final List<String> heads = new ArrayList<>(getStealable(as.getArmorItems()));
+				try {
 
-				heads.addAll(getStealable(as.getItemsHand()));
+					final ArmorStandEntity as = (ArmorStandEntity) entity;
+					final List<JsonObject> jobjs = new ArrayList<>(getStealable(as.getArmorItems(), swag));
 
-				if (!heads.isEmpty()) {
+					jobjs.addAll(getStealable(as.getItemsHand(), swag));
 
-					context.getSource().sendFeedback(getFeedbackText(
-							Util.createTranslationKey("entity", Registry.ENTITY_TYPE.getId(entity.getType()))));
+					if (!jobjs.isEmpty()) {
 
-					new Clipboard().setClipboard(MinecraftClient.getInstance().getWindow().getHandle(),
-							String.join("\n", heads).trim());
+						swag.send(jobjs, (item) -> context.getSource().sendFeedback(getFeedbackText(
+								Util.createTranslationKey("entity", Registry.ENTITY_TYPE.getId(entity.getType())))));
 
-					found = true;
+						found = true;
+					}
+
+				} catch (IOException e) {
+					// TODO log failure
 				}
 
 			} else if (entity instanceof ItemFrameEntity) {
 
-				final ItemFrameEntity ifr = (ItemFrameEntity) entity;
+				final ItemStack heldItemStack = ((ItemFrameEntity) entity).getHeldItemStack();
 
-				if (isStealable(ifr.getHeldItemStack().getItem())) {
+				if (isStealable(heldItemStack.getItem())) {
 
-					copyGiveCmdToClipboard(ifr.getHeldItemStack().getItem(), ifr.getHeldItemStack().getOrCreateNbt(),
-							context);
-					found = true;
+					try {
+
+						swag.send(swag.add(heldItemStack.getItem(), heldItemStack.getOrCreateNbt()),
+								(item3) -> context.getSource().sendFeedback(getFeedbackText(item3)));
+
+						found = storeCopySend(heldItemStack.getItem(), heldItemStack.getOrCreateNbt(), swag, context);
+
+					} catch (IOException e) {
+						// TODO log failure
+					}
 				}
 			}
 
@@ -147,40 +170,36 @@ public final class StealCommand implements Command<FabricClientCommandSource> {
 		return Command.SINGLE_SUCCESS;
 	}
 
-	private final List<String> getStealable(final Iterable<ItemStack> items) {
+	private static boolean storeCopySend(final Item item, final NbtCompound nbt, final Swag swag,
+			final CommandContext<FabricClientCommandSource> context) throws IOException {
 
-		final List<String> heads = new ArrayList<>(6);
+		swag.send(swag.add(item, nbt), (it) -> context.getSource().sendFeedback(getFeedbackText(it)));
+
+		return true;
+	}
+
+	private static final List<JsonObject> getStealable(final Iterable<ItemStack> items, final Swag swag)
+			throws IOException {
+
+		final List<JsonObject> heads = new ArrayList<>(6);
 
 		for (final ItemStack item : items) {
 
 			if (isStealable(item.getItem())) {
-				heads.add(GIVE_CMD_PREFIX + Registry.ITEM.getId(item.getItem()) + item.getOrCreateNbt().asString());
+				heads.add(swag.add(item.getItem(), item.getOrCreateNbt()));
 			}
 		}
 
 		return heads;
 	}
 
-	private void copyGiveCmdToClipboard(final Item item, final NbtCompound nbt,
-			final CommandContext<FabricClientCommandSource> context) {
-
-		context.getSource().sendFeedback(getFeedbackText(item));
-
-		new Clipboard().setClipboard(MinecraftClient.getInstance().getWindow().getHandle(),
-				(GIVE_CMD_PREFIX + Registry.ITEM.getId(item) + nbt.asString()).trim());
-	}
-
-	private Text getFeedbackText(final Item item) {
-		return getFeedbackText(item.getTranslationKey());
-	}
-
-	private Text getFeedbackText(final String key) {
+	private static Text getFeedbackText(final String key) {
 		return (new TranslatableText(key).formatted(Formatting.DARK_AQUA)).append(" copied as ")
 				.append(new LiteralText("/give command").formatted(Formatting.AQUA, Formatting.ITALIC))
 				.append(new LiteralText(" to clipboard.")).formatted(Formatting.DARK_AQUA);
 	}
 
-	private boolean isStealable(final Item item) {
+	private static boolean isStealable(final Item item) {
 		return item instanceof SkullItem || item instanceof BannerItem || item instanceof ShieldItem
 				|| item instanceof WritableBookItem || item instanceof WrittenBookItem;
 	}
