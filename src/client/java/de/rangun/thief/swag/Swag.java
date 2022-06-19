@@ -61,6 +61,17 @@ public final class Swag implements Inventory {
 
 	private static Swag instance = null;
 
+	private final static class CopyDO {
+
+		private final List<String> copyCmds;
+		private final String lastItemKey;
+
+		public CopyDO(final List<String> copyCmds, final String lastItemKey) {
+			this.copyCmds = copyCmds;
+			this.lastItemKey = lastItemKey;
+		}
+	}
+
 	private Swag() throws JsonSyntaxException, IOException {
 
 		if (Files.exists(SWAGFILE)) {
@@ -114,6 +125,24 @@ public final class Swag implements Inventory {
 
 	public void send(final List<JsonObject> jobjs, Consumer<String> consumer) {
 
+		final CopyDO copyCmds = createCopyCommands(jobjs);
+
+		if (consumer != null) {
+			consumer.accept(copyCmds.lastItemKey);
+		}
+
+		final String cmd = String.join(System.lineSeparator() + System.lineSeparator(), copyCmds.copyCmds);
+
+		send(cmd);
+	}
+
+	public void send(final String cmd) {
+		new Clipboard().setClipboard(MinecraftClient.getInstance().getWindow().getHandle(),
+				String.join(System.lineSeparator() + System.lineSeparator(), cmd));
+	}
+
+	private CopyDO createCopyCommands(final List<JsonObject> jobjs) {
+
 		final List<String> copyCmds = new ArrayList<>(jobjs.size());
 
 		String lastItemKey = null;
@@ -129,12 +158,7 @@ public final class Swag implements Inventory {
 			copyCmds.add((GIVE_CMD_PREFIX + itemKey + nbt.asString()).trim());
 		}
 
-		if (consumer != null) {
-			consumer.accept(lastItemKey);
-		}
-
-		new Clipboard().setClipboard(MinecraftClient.getInstance().getWindow().getHandle(),
-				String.join(System.lineSeparator() + System.lineSeparator(), copyCmds));
+		return new CopyDO(copyCmds, lastItemKey);
 	}
 
 	private void serialize() throws IOException {
@@ -236,5 +260,20 @@ public final class Swag implements Inventory {
 	@Override
 	public int getMaxCountPerStack() {
 		return 1;
+	}
+
+	public String getGiveCmd(int slotIndex) {
+
+		final ItemStack item = getStack(slotIndex);
+
+		if (!ItemStack.EMPTY.equals(item)) {
+
+			final List<JsonObject> list = new ArrayList<>(1);
+			list.add(swag.get(slotIndex).getAsJsonObject());
+
+			return createCopyCommands(list).copyCmds.get(0);
+		}
+
+		return null;
 	}
 }

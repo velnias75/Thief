@@ -24,10 +24,6 @@ import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.screen.GenericContainerScreenHandler;
 import net.minecraft.text.Text;
 
-/**
- * @author heiko
- *
- */
 public final class SwagScreen extends GenericContainerScreen {
 
 	public SwagScreen(GenericContainerScreenHandler handler, PlayerInventory inventory, Text title) {

@@ -30,19 +30,13 @@ import net.minecraft.text.LiteralText;
 
 public final class SwagCommand implements Command<FabricClientCommandSource> {
 
-	private final ThiefMod mod;
-
-	public SwagCommand(final ThiefMod thiefMod) {
-		this.mod = thiefMod;
-	}
-
 	@Override
 	public int run(CommandContext<FabricClientCommandSource> context) throws CommandSyntaxException {
 
-		context.getSource().getClient().send(() -> HandledScreens.open(ThiefMod.getSwagHandlerType(),
-				context.getSource().getClient(), 0, new LiteralText("Swag")));
+		context.getSource().getClient()
+				.send(() -> HandledScreens.open(ThiefMod.getSwagHandlerType(), context.getSource().getClient(),
+						context.getSource().getPlayer().playerScreenHandler.syncId, new LiteralText("Swag")));
 
 		return Command.SINGLE_SUCCESS;
 	}
-
 }

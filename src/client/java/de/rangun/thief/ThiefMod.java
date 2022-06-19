@@ -43,7 +43,7 @@ public final class ThiefMod implements ClientModInitializer {
 		HandledScreens.register(SWAGTYPE, SwagScreen::new);
 
 		DISPATCHER.register(literal("steal").executes(new StealCommand()));
-		DISPATCHER.register(literal("swag").executes(new SwagCommand(this)));
+		DISPATCHER.register(literal("swag").executes(new SwagCommand()));
 	}
 
 	public static ScreenHandlerType<SwagScreenHandler> getSwagHandlerType() {

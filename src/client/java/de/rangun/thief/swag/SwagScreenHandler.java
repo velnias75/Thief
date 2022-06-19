@@ -19,10 +19,14 @@
 
 package de.rangun.thief.swag;
 
+import org.lwjgl.glfw.GLFW;
+
+import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.screen.GenericContainerScreenHandler;
 import net.minecraft.screen.ScreenHandlerType;
+import net.minecraft.screen.slot.SlotActionType;
 
 public final class SwagScreenHandler extends GenericContainerScreenHandler {
 
@@ -33,5 +37,31 @@ public final class SwagScreenHandler extends GenericContainerScreenHandler {
 	@Override
 	public boolean canUse(PlayerEntity player) {
 		return getInventory().canPlayerUse(player);
+	}
+
+	@Override
+	public void onSlotClick(int slotIndex, int button, SlotActionType actionType, PlayerEntity player) {
+
+		super.onSlotClick(slotIndex, button, actionType, player);
+		
+		final Swag swag = (Swag) getInventory();
+		final String cmd = swag.getGiveCmd(slotIndex);
+
+		if (cmd != null) {
+
+			if (SlotActionType.PICKUP.equals(actionType))
+				switch (button) {
+				case GLFW.GLFW_MOUSE_BUTTON_1:
+					if (player instanceof ClientPlayerEntity && cmd.length() <= 256) {
+						((ClientPlayerEntity) player).sendChatMessage(cmd);
+					}
+					break;
+				case GLFW.GLFW_MOUSE_BUTTON_2:
+					swag.send(cmd);
+					break;
+				default:
+					System.out.println("Button: " + button);
+				}
+		}
 	}
 }
