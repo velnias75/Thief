@@ -34,16 +34,24 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.serialization.JsonOps;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.Clipboard;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.inventory.Inventory;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.SkullItem;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.StringNbtReader;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.registry.Registry;
 
-public final class Swag {
+public final class Swag implements Inventory {
 
 	private final static String GIVE_CMD_PREFIX = "/give @p ";
 	private final static Path CONFIGPATH = FabricLoader.getInstance().getConfigDir().resolve("thief");
@@ -51,7 +59,9 @@ public final class Swag {
 	private final JsonObject container;
 	private final JsonArray swag;
 
-	public Swag() throws JsonSyntaxException, IOException {
+	private static Swag instance = null;
+
+	private Swag() throws JsonSyntaxException, IOException {
 
 		if (Files.exists(SWAGFILE)) {
 
@@ -73,10 +83,13 @@ public final class Swag {
 		}
 	}
 
-	public Swag(final boolean empty) {
-		this.container = new JsonObject();
-		this.swag = new JsonArray();
-		this.container.add("swag", swag);
+	public static Swag getInstance() {
+
+		try {
+			return instance != null ? instance : new Swag();
+		} catch (JsonSyntaxException | IOException e) {
+			return null;
+		}
 	}
 
 	public JsonObject add(final Item item, final NbtCompound nbt) throws IOException {
@@ -135,5 +148,93 @@ public final class Swag {
 		try (Writer w = new FileWriter(path.toFile())) {
 			w.write(container.toString());
 		}
+	}
+
+	@Override
+	public void clear() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public int size() {
+		return 54;
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return !(container.has("swag") && swag.size() > 0);
+	}
+
+	@Override
+	public ItemStack getStack(int slot) {
+
+		if (slot < Math.min(swag.size(), 54)) {
+
+			final JsonObject itemDesc = swag.get(slot).getAsJsonObject();
+			final ItemStack item = new ItemStack(Registry.ITEM.get(new Identifier(itemDesc.get("item").getAsString())),
+					1);
+
+			try {
+
+				final String nbtString = itemDesc.get("nbt").getAsJsonObject().toString();
+
+				item.setNbt(StringNbtReader.parse(nbtString));
+
+				if (item.getItem() instanceof SkullItem) {
+					fixSkull(item);
+				}
+
+			} catch (CommandSyntaxException e) {
+				e.printStackTrace();
+			}
+
+			return item;
+		}
+
+		return ItemStack.EMPTY;
+	}
+
+	private void fixSkull(final ItemStack stack) {
+
+		final NbtCompound nbtCompound = stack.getNbt();
+
+		if (nbtCompound.contains("SkullOwner", NbtElement.COMPOUND_TYPE)) {
+
+			final NbtCompound nbtCompound2 = nbtCompound.getCompound("SkullOwner");
+
+			if (!nbtCompound2.contains("Name", NbtElement.STRING_TYPE)) {
+				nbtCompound2.putString("Name", "Unknown Victim");
+			}
+		}
+	}
+
+	@Override
+	public ItemStack removeStack(int slot, int amount) {
+		return ItemStack.EMPTY;
+	}
+
+	@Override
+	public ItemStack removeStack(int slot) {
+		return ItemStack.EMPTY;
+	}
+
+	@Override
+	public void setStack(int slot, ItemStack stack) {
+		// intentionally does nothing
+	}
+
+	@Override
+	public void markDirty() {
+		// intentionally does nothing
+	}
+
+	@Override
+	public boolean canPlayerUse(PlayerEntity player) {
+		return false;
+	}
+
+	@Override
+	public int getMaxCountPerStack() {
+		return 1;
 	}
 }

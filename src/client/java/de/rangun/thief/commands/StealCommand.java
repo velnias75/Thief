@@ -28,7 +28,6 @@ import com.mojang.brigadier.Command;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
-import de.rangun.thief.ThiefMod;
 import de.rangun.thief.swag.Swag;
 import net.fabricmc.fabric.api.client.command.v1.FabricClientCommandSource;
 import net.minecraft.block.Block;
@@ -48,7 +47,10 @@ import net.minecraft.item.SkullItem;
 import net.minecraft.item.WritableBookItem;
 import net.minecraft.item.WrittenBookItem;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.text.ClickEvent;
+import net.minecraft.text.HoverEvent;
 import net.minecraft.text.LiteralText;
+import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.text.TranslatableText;
 import net.minecraft.util.Formatting;
@@ -61,18 +63,12 @@ import net.minecraft.util.registry.Registry;
 
 public final class StealCommand implements Command<FabricClientCommandSource> {
 
-	private final ThiefMod mod;
-
-	public StealCommand(final ThiefMod thiefMod) {
-		this.mod = thiefMod;
-	}
-
 	@Override
 	public int run(final CommandContext<FabricClientCommandSource> context) throws CommandSyntaxException {
 
 		final MinecraftClient client = context.getSource().getClient();
 		final HitResult hit = client.crosshairTarget;
-		final Swag swag = mod.getSwag();
+		final Swag swag = Swag.getInstance();
 
 		boolean found = false;
 
@@ -148,12 +144,7 @@ public final class StealCommand implements Command<FabricClientCommandSource> {
 				if (isStealable(heldItemStack.getItem())) {
 
 					try {
-
-						swag.send(swag.add(heldItemStack.getItem(), heldItemStack.getOrCreateNbt()),
-								(item3) -> context.getSource().sendFeedback(getFeedbackText(item3)));
-
 						found = storeCopySend(heldItemStack.getItem(), heldItemStack.getOrCreateNbt(), swag, context);
-
 					} catch (IOException e) {
 						// TODO log failure
 					}
@@ -195,8 +186,16 @@ public final class StealCommand implements Command<FabricClientCommandSource> {
 
 	private static Text getFeedbackText(final String key) {
 		return (new TranslatableText(key).formatted(Formatting.DARK_AQUA)).append(" copied as ")
-				.append(new LiteralText("/give command").formatted(Formatting.AQUA, Formatting.ITALIC))
-				.append(new LiteralText(" to clipboard.")).formatted(Formatting.DARK_AQUA);
+				.append(new LiteralText("/give command").formatted(Formatting.AQUA,
+						Formatting.ITALIC))
+				.append(new LiteralText(" to clipboard and to your ")).append(
+						new LiteralText("swag")
+								.setStyle(Style.EMPTY
+										.withHoverEvent(
+												new HoverEvent(HoverEvent.Action.SHOW_TEXT, new LiteralText("/swag")))
+										.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/swag")))
+								.formatted(Formatting.UNDERLINE))
+				.append(new LiteralText(".")).formatted(Formatting.DARK_AQUA);
 	}
 
 	private static boolean isStealable(final Item item) {

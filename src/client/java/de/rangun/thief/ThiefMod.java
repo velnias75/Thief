@@ -22,33 +22,31 @@ package de.rangun.thief;
 import static net.fabricmc.fabric.api.client.command.v1.ClientCommandManager.DISPATCHER;
 import static net.fabricmc.fabric.api.client.command.v1.ClientCommandManager.literal;
 
-import java.io.IOException;
-
-import com.google.gson.JsonSyntaxException;
-
 import de.rangun.thief.commands.StealCommand;
-import de.rangun.thief.swag.Swag;
+import de.rangun.thief.commands.SwagCommand;
+import de.rangun.thief.swag.SwagScreen;
+import de.rangun.thief.swag.SwagScreenHandler;
 import net.fabricmc.api.ClientModInitializer;
+import net.minecraft.client.gui.screen.ingame.HandledScreens;
+import net.minecraft.screen.ScreenHandlerType;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.registry.Registry;
 
 public final class ThiefMod implements ClientModInitializer {
 
-	private Swag swag;
-
-	public ThiefMod() {
-
-		try {
-			this.swag = new Swag();
-		} catch (JsonSyntaxException | IOException e) {
-			this.swag = new Swag(true);
-		}
-	}
+	private final static ScreenHandlerType<SwagScreenHandler> SWAGTYPE = Registry.register(Registry.SCREEN_HANDLER,
+			new Identifier("thief", "swag"), new ScreenHandlerType<>(SwagScreenHandler::new));
 
 	@Override
 	public void onInitializeClient() {
-		DISPATCHER.register(literal("steal").executes(new StealCommand(this)));
+
+		HandledScreens.register(SWAGTYPE, SwagScreen::new);
+
+		DISPATCHER.register(literal("steal").executes(new StealCommand()));
+		DISPATCHER.register(literal("swag").executes(new SwagCommand(this)));
 	}
 
-	public Swag getSwag() {
-		return swag;
+	public static ScreenHandlerType<SwagScreenHandler> getSwagHandlerType() {
+		return SWAGTYPE;
 	}
 }
