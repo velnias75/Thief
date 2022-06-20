@@ -66,18 +66,23 @@ public final class Swag implements Inventory {
 	private final static Path CONFIGPATH = FabricLoader.getInstance().getConfigDir().resolve("thief");
 	private final static Path SWAGFILE = CONFIGPATH.resolve("swag.json");
 
-	private final static NbtString LORE_LEFT_CLOCK = NbtString
+	private final static NbtString LORE_LEFT_CLICK = NbtString
 			.of(fixItalic(Text.Serializer.toJson(new LiteralText("Left click: ")
 					.append(new LiteralText("try to give item to player").formatted(Formatting.AQUA))
 					.formatted(Formatting.DARK_AQUA))));
 
-	private final static NbtString LORE_RIGHT_CLOCK = NbtString
+	private final static NbtString LORE_RIGHT_CLICK = NbtString
 			.of(fixItalic(
 					Text.Serializer.toJson(new LiteralText("Right click: ")
 							.append(new LiteralText("copy item's ")
 									.append(new LiteralText("/give command").formatted(Formatting.ITALIC))
 									.append(" to clipboard").formatted(Formatting.GREEN))
 							.formatted(Formatting.DARK_GREEN))));
+
+	private final static NbtString LORE_REMOVE_CLICK = NbtString
+			.of(fixItalic(Text.Serializer.toJson(new LiteralText("SHIFT+right click: ")
+					.append(new LiteralText("removes item from swag").formatted(Formatting.RED))
+					.formatted(Formatting.DARK_RED))));
 
 	private final JsonObject container;
 	private final JsonArray swag;
@@ -275,10 +280,11 @@ public final class Swag implements Inventory {
 			final NbtList lore = display.getList(ItemStack.LORE_KEY, NbtElement.STRING_TYPE);
 
 			if (createCopyCommands(Arrays.asList(new JsonObject[] { itemDesc })).copyCmds.get(0).length() <= 256) {
-				lore.add(LORE_LEFT_CLOCK);
+				lore.add(LORE_LEFT_CLICK);
 			}
 
-			lore.add(LORE_RIGHT_CLOCK);
+			lore.add(LORE_RIGHT_CLICK);
+			lore.add(LORE_REMOVE_CLICK);
 
 			return item;
 		}
@@ -302,11 +308,20 @@ public final class Swag implements Inventory {
 
 	@Override
 	public ItemStack removeStack(int slot, int amount) {
-		return ItemStack.EMPTY;
+		return removeStack(slot);
 	}
 
 	@Override
 	public ItemStack removeStack(int slot) {
+
+		swag.remove(slot);
+
+		try {
+			serialize();
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+
 		return ItemStack.EMPTY;
 	}
 
