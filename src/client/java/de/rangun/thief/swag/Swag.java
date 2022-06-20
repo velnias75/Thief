@@ -26,11 +26,14 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.function.Consumer;
 
 import com.google.common.collect.Lists;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
@@ -47,7 +50,13 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.SkullItem;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtString;
 import net.minecraft.nbt.StringNbtReader;
+import net.minecraft.screen.ScreenHandler;
+import net.minecraft.text.LiteralText;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.registry.Registry;
 
@@ -56,6 +65,20 @@ public final class Swag implements Inventory {
 	private final static String GIVE_CMD_PREFIX = "/give @p ";
 	private final static Path CONFIGPATH = FabricLoader.getInstance().getConfigDir().resolve("thief");
 	private final static Path SWAGFILE = CONFIGPATH.resolve("swag.json");
+
+	private final static NbtString LORE_LEFT_CLOCK = NbtString
+			.of(fixItalic(Text.Serializer.toJson(new LiteralText("Left click: ")
+					.append(new LiteralText("try to give item to player").formatted(Formatting.AQUA))
+					.formatted(Formatting.DARK_AQUA))));
+
+	private final static NbtString LORE_RIGHT_CLOCK = NbtString
+			.of(fixItalic(
+					Text.Serializer.toJson(new LiteralText("Right click: ")
+							.append(new LiteralText("copy item's ")
+									.append(new LiteralText("/give command").formatted(Formatting.ITALIC))
+									.append(" to clipboard").formatted(Formatting.GREEN))
+							.formatted(Formatting.DARK_GREEN))));
+
 	private final JsonObject container;
 	private final JsonArray swag;
 
@@ -92,6 +115,31 @@ public final class Swag implements Inventory {
 				throw new UncheckedIOException(e);
 			}
 		}
+	}
+
+	private static String fixItalic(final String json) {
+
+		final JsonElement el = JsonParser.parseString(json);
+
+		if (el.isJsonObject()) {
+
+			final JsonObject jo = el.getAsJsonObject();
+			boolean hasItalic = false;
+
+			for (final Entry<String, JsonElement> b : jo.entrySet()) {
+
+				if ("italic".equalsIgnoreCase(b.getKey())) {
+					hasItalic = true;
+					break;
+				}
+			}
+
+			if (!hasItalic) {
+				jo.addProperty("italic", false);
+			}
+		}
+
+		return el.toString();
 	}
 
 	public static Swag getInstance() {
@@ -192,7 +240,7 @@ public final class Swag implements Inventory {
 	@Override
 	public ItemStack getStack(int slot) {
 
-		if (slot < Math.min(swag.size(), 54)) {
+		if (slot != ScreenHandler.EMPTY_SPACE_SLOT_INDEX && slot < Math.min(swag.size(), 54)) {
 
 			final JsonObject itemDesc = swag.get(slot).getAsJsonObject();
 			final ItemStack item = new ItemStack(Registry.ITEM.get(new Identifier(itemDesc.get("item").getAsString())),
@@ -211,6 +259,26 @@ public final class Swag implements Inventory {
 			} catch (CommandSyntaxException e) {
 				e.printStackTrace();
 			}
+
+			final NbtCompound nbt = item.getOrCreateNbt();
+
+			if (!nbt.contains(ItemStack.DISPLAY_KEY, NbtElement.COMPOUND_TYPE)) {
+				nbt.put(ItemStack.DISPLAY_KEY, new NbtCompound());
+			}
+
+			final NbtCompound display = nbt.getCompound(ItemStack.DISPLAY_KEY);
+
+			if (!display.contains(ItemStack.LORE_KEY, NbtElement.COMPOUND_TYPE)) {
+				display.put(ItemStack.LORE_KEY, new NbtList());
+			}
+
+			final NbtList lore = display.getList(ItemStack.LORE_KEY, NbtElement.STRING_TYPE);
+
+			if (createCopyCommands(Arrays.asList(new JsonObject[] { itemDesc })).copyCmds.get(0).length() <= 256) {
+				lore.add(LORE_LEFT_CLOCK);
+			}
+
+			lore.add(LORE_RIGHT_CLOCK);
 
 			return item;
 		}

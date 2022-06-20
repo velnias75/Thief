@@ -42,12 +42,10 @@ public final class SwagScreenHandler extends GenericContainerScreenHandler {
 	@Override
 	public void onSlotClick(int slotIndex, int button, SlotActionType actionType, PlayerEntity player) {
 
-		super.onSlotClick(slotIndex, button, actionType, player);
-		
 		final Swag swag = (Swag) getInventory();
 		final String cmd = swag.getGiveCmd(slotIndex);
 
-		if (cmd != null) {
+		if (getInventory() == swag && cmd != null) {
 
 			if (SlotActionType.PICKUP.equals(actionType))
 				switch (button) {
@@ -62,6 +60,8 @@ public final class SwagScreenHandler extends GenericContainerScreenHandler {
 				default:
 					System.out.println("Button: " + button);
 				}
+		} else {
+			super.onSlotClick(slotIndex, button, actionType, player);
 		}
 	}
 }
