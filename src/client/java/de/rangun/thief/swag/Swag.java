@@ -63,6 +63,10 @@ import net.minecraft.util.registry.Registry;
 public final class Swag implements Inventory {
 
 	private final static String GIVE_CMD_PREFIX = "/give @p ";
+	private final static String UNKNOWN_VICTIIM = "Unknown Victim";
+	private static final String UNKNOWN_VICTIM_TEXT = fixItalic(Text.Serializer.toJson(
+			new LiteralText("Head of ").append(new LiteralText(UNKNOWN_VICTIIM).formatted(Formatting.OBFUSCATED))));
+
 	private final static Path CONFIGPATH = FabricLoader.getInstance().getConfigDir().resolve("thief");
 	private final static Path SWAGFILE = CONFIGPATH.resolve("swag.json");
 
@@ -296,12 +300,18 @@ public final class Swag implements Inventory {
 
 		final NbtCompound nbtCompound = stack.getNbt();
 
-		if (nbtCompound.contains("SkullOwner", NbtElement.COMPOUND_TYPE)) {
+		if (nbtCompound.contains(SkullItem.SKULL_OWNER_KEY, NbtElement.COMPOUND_TYPE)) {
 
-			final NbtCompound nbtCompound2 = nbtCompound.getCompound("SkullOwner");
+			final NbtCompound nbtCompound2 = nbtCompound.getCompound(SkullItem.SKULL_OWNER_KEY);
 
-			if (!nbtCompound2.contains("Name", NbtElement.STRING_TYPE)) {
-				nbtCompound2.putString("Name", "Unknown Victim");
+			if (!nbtCompound2.contains(ItemStack.NAME_KEY, NbtElement.STRING_TYPE)) {
+
+				nbtCompound2.putString(ItemStack.NAME_KEY, UNKNOWN_VICTIIM);
+
+				final NbtCompound nbtCompound3 = new NbtCompound();
+				nbtCompound3.putString(ItemStack.NAME_KEY, UNKNOWN_VICTIM_TEXT);
+
+				nbtCompound.put(ItemStack.DISPLAY_KEY, nbtCompound3);
 			}
 		}
 	}
